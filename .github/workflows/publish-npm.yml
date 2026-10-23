@@ -100,6 +100,7 @@ jobs:
           name: harness-ui
           path: gluon/app/harness-frontend/dist
 
+      # Generated protobuf code is bundled as data because harness/gluon aliases it by file path, which PyInstaller cannot trace.
       # Same flags as `make gluon-harness-mcp`, run directly because that target is bash/POSIX-path specific.
       # PyInstaller cannot cross-compile, so each target builds on its own OS and architecture.
       - name: Build harness binary
@@ -114,6 +115,7 @@ jobs:
             --name gluon-harness-mcp \
             --paths . --paths generated \
             --add-data "data/java${SEPARATOR}data/java" \
+            --add-data "generated/gluon${SEPARATOR}gluon" \
             --add-data "../harness-frontend/dist${SEPARATOR}ui" \
             --distpath dist --workpath build/mcp \
             integrations/mcp/harness_mcp.py
