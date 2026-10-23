@@ -67,9 +67,8 @@ git -C "$project" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "$proje
 
 # Setup installs the JDKs and JDTLS the stages depend on; it is a separate command and never run from here.
 [ -f "$HOME/.cluon/env.sh" ] && . "$HOME/.cluon/env.sh"
-jdk_root="${GLUON_JDK_ROOT:-/opt/jdks}"
-if [ ! -x "$jdk_root/jdk25/bin/java" ] || ! command -v jdtls >/dev/null; then
-  printf 'error: developer environment is not set up (need %s/jdk25 and jdtls on PATH). Run /cluon:setup first.\n' "$jdk_root" >&2
+if [ ! -x "$HOME/local/jdks/jdk25/bin/java" ] || [ ! -x "$HOME/local/jdtls/bin/jdtls" ]; then
+  printf 'error: developer environment is not set up (need ~/local/jdks/jdk25 and ~/local/jdtls). Run /cluon:setup first.\n' >&2
   exit 2
 fi
 command -v npx >/dev/null || die "npx not found; install Node.js 18 or newer"

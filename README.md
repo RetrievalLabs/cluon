@@ -21,7 +21,7 @@ Run the `setup` skill once per machine, not per project. In Claude Code:
 /cluon:setup
 ```
 
-It installs git, JDK 8, 11, 17, 21 and 25 under `/opt/jdks/jdkN`, Maven 3.9.16, Gradle 9.7.0, japicmp 0.26.5 at `/opt/jars/japicmp.jar` and Eclipse JDTLS 1.54.0 (`jdtls` on `PATH`). It sets `JAVA_HOME` and `GLUON_JDTLS_JAVA_HOME` to JDK 25 through `~/.cluon/env.sh`, which it sources from `~/.bashrc`, `~/.zshrc` and `~/.profile`. Linux and macOS are supported. Creating `/opt` directories needs `sudo`; if it needs a password, run `skills/setup/scripts/setup.sh` yourself in a terminal. Later runs do nothing unless you pass `--force`. Open a new shell afterwards.
+It installs git, JDK 8, 11, 17, 21 and 25 under `~/local/jdks/jdkN`, Maven 3.9.16, Gradle 9.7.0, japicmp 0.26.5 at `~/local/jars/japicmp.jar` and Eclipse JDTLS 1.54.0 in `~/local/jdtls`, none of it on `PATH`. It sets `JAVA_HOME` and `GLUON_JDTLS_JAVA_HOME` to JDK 25 through `~/.cluon/env.sh`, which it sources from `~/.bashrc`, `~/.zshrc` and `~/.profile`. Linux and macOS are supported. Only installing OS packages needs `sudo`; if it needs a password, run `skills/setup/scripts/setup.sh` yourself in a terminal. Later runs do nothing unless you pass `--force`. Open a new shell afterwards.
 
 ## Analyze a project
 
