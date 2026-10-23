@@ -13,6 +13,16 @@ The repository root is a single plugin. Every agent reads the same `skills/` dir
 
 Skills are copied from `gluon/app/harness/skills`.
 
+## Set up the machine
+
+Run the `setup` skill once per machine, not per project. In Claude Code:
+
+```
+/cluon:setup
+```
+
+It installs git, JDK 8, 11, 17, 21 and 25 under `/opt/jdks/jdkN`, Maven 3.9.16, Gradle 9.7.0, japicmp 0.26.5 at `/opt/jars/japicmp.jar` and Eclipse JDTLS 1.54.0 (`jdtls` on `PATH`). It sets `JAVA_HOME` and `GLUON_JDTLS_JAVA_HOME` to JDK 25 through `~/.cluon/env.sh`, which it sources from `~/.bashrc`, `~/.zshrc` and `~/.profile`. Linux and macOS are supported. Creating `/opt` directories needs `sudo`; if it needs a password, run `skills/setup/scripts/setup.sh` yourself in a terminal. Later runs do nothing unless you pass `--force`. Open a new shell afterwards.
+
 ## Start the MCP server
 
 The plugins do not launch the server. `cluon-mcp` serves streamable HTTP for one project, so start it in the project checkout before using the agent:
