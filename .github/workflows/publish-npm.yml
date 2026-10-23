@@ -75,8 +75,6 @@ jobs:
             runner: macos-15
           - target: win32-x64
             runner: windows-2022
-          - target: win32-arm64
-            runner: windows-11-arm
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
