@@ -85,7 +85,9 @@ if [ "${#MISSING[@]}" -gt 0 ]; then
   SCRATCH="$(mktemp -d)"
   trap 'rm -rf "$SCRATCH"' EXIT
 
-  download() { curl -fsSL --retry 3 -o "$2" "$1" || die "download failed: $1"; }
+  # Progress bar on a terminal so a slow download does not look hung.
+  PROGRESS=(-sS); if [ -t 2 ]; then PROGRESS=(--progress-bar); fi
+  download() { log "downloading $1"; curl -fL "${PROGRESS[@]}" --retry 3 -o "$2" "$1" || die "download failed: $1"; }
 
   # Unpack an archive into $2, stripping the single top-level directory.
   extract_into() {
