@@ -1,0 +1,172 @@
+name: Publish npm
+
+# Runs when a gluon release PR (opened by gluon's sync-cluon workflow) is merged.
+on:
+  push:
+    branches: [main]
+    paths: [GLUON_VERSION]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read gluon release tag
+        id: release
+        run: |
+          tag="$(tr -d '[:space:]' < GLUON_VERSION)"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected stable semantic version tag (vMAJOR.MINOR.PATCH) in GLUON_VERSION, got: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+  # The UI is platform independent, so it is built once here. This also keeps protoc out of the macOS and Windows jobs.
+  frontend:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: RetrievalLabs/gluon
+          ref: ${{ needs.verify.outputs.tag }}
+          token: ${{ secrets.GLUON_REPO_TOKEN }}
+          path: gluon
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+
+      # The frontend proto generation needs protoc and the well-known type headers in /usr/include.
+      - name: Install Protocol Buffers compiler
+        run: sudo apt-get update && sudo apt-get install --yes protobuf-compiler libprotobuf-dev
+
+      - name: Build harness frontend
+        run: make -C gluon harness-frontend-build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harness-ui
+          path: gluon/app/harness-frontend/dist
+          if-no-files-found: error
+
+  build:
+    needs: [verify, frontend]
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # Linux is built on the oldest runner image to keep the glibc requirement low.
+          - target: linux-x64
+            runner: ubuntu-22.04
+          - target: linux-arm64
+            runner: ubuntu-22.04-arm
+          - target: darwin-x64
+            runner: macos-15-intel
+          - target: darwin-arm64
+            runner: macos-15
+          - target: win32-x64
+            runner: windows-2022
+          - target: win32-arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: RetrievalLabs/gluon
+          ref: ${{ needs.verify.outputs.tag }}
+          token: ${{ secrets.GLUON_REPO_TOKEN }}
+          path: gluon
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: gluon/app/harness/.python-version
+
+      - uses: astral-sh/setup-uv@v6
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: harness-ui
+          path: gluon/app/harness-frontend/dist
+
+      # Same flags as `make gluon-harness-mcp`, run directly because that target is bash/POSIX-path specific.
+      # PyInstaller cannot cross-compile, so each target builds on its own OS and architecture.
+      - name: Build harness binary
+        working-directory: gluon/app/harness
+        env:
+          BACKEND_URL: https://cluon.retrievallabs.org
+        run: |
+          # The binary logs in to this backend unless --backend-url overrides it.
+          printf 'BACKEND_URL = "%s"\n' "$BACKEND_URL" > integrations/auth/built_backend_url.py
+          SEPARATOR="$(uv run --group dev python -c 'import os; print(os.pathsep)')"
+          uv run --locked --group dev python -m PyInstaller --noconfirm --clean --onefile \
+            --name gluon-harness-mcp \
+            --paths . --paths generated \
+            --add-data "data/java${SEPARATOR}data/java" \
+            --add-data "../harness-frontend/dist${SEPARATOR}ui" \
+            --distpath dist --workpath build/mcp \
+            integrations/mcp/harness_mcp.py
+
+      - name: Smoke test binary
+        working-directory: gluon/app/harness/dist
+        run: ./gluon-harness-mcp --help
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: gluon/app/harness/dist/gluon-harness-mcp*
+          if-no-files-found: error
+
+  publish:
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: RetrievalLabs/gluon
+          ref: ${{ needs.verify.outputs.tag }}
+          token: ${{ secrets.GLUON_REPO_TOKEN }}
+          path: gluon
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: binaries
+          # Folders come out as binaries/<target>/, which stage.mjs reads as platform-arch.
+          merge-multiple: false
+
+      - name: Stage packages
+        run: |
+          for dir in binaries/binary-*; do mv "$dir" "binaries/${dir#binaries/binary-}"; done
+          node gluon/app/harness-npm/stage.mjs "${{ needs.verify.outputs.version }}" binaries staged
+
+      # Platform packages go first so the main package's optional dependencies already exist when it is published.
+      - name: Publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for dir in staged/cluon-mcp-*; do
+            (cd "$dir" && npm publish --access public)
+          done
+
+      - name: Publish cluon-mcp
+        working-directory: staged/cluon-mcp
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
