@@ -17,7 +17,7 @@ Inputs: the target Java major version (9 to 25) and the project path (default: t
 bash <this skill's directory>/scripts/start-server.sh start --target-version <N> --project-path <path>
 ```
 
-It launches `npx cluon-mcp` for the project in the background and returns within about 20 seconds. Read its output:
+It launches `npx @retrievallabs/cluon-mcp` for the project in the background and returns within about 20 seconds. Read its output:
 
 - `error: developer environment is not set up` (exit 2): tell the user to run `/cluon:setup`, then stop.
 - `login-required: <url>`: first run for this project, or the stored login expired. The harness already tried to open the browser. Give the user the link right away and ask them to open it if no browser window appeared. It must be opened on this machine. Then run step 2.

@@ -82,7 +82,7 @@ fi
 
 mkdir -p "$state_dir"
 : > "$log_file"
-launch=(npx -y cluon-mcp --project-path "$project" --target-version "$target" --port "$MCP_PORT" --ui-port "$UI_PORT")
+launch=(npx -y @retrievallabs/cluon-mcp --project-path "$project" --target-version "$target" --port "$MCP_PORT" --ui-port "$UI_PORT")
 # setsid detaches the server from the caller's process group so it outlives this script; macOS has none.
 if command -v setsid >/dev/null; then launch=(setsid "${launch[@]}"); fi
 nohup "${launch[@]}" > "$log_file" 2>&1 < /dev/null &

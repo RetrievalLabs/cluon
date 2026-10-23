@@ -165,7 +165,7 @@ jobs:
             (cd "$dir" && npm publish --access public)
           done
 
-      - name: Publish cluon-mcp
+      - name: Publish @retrievallabs/cluon-mcp
         working-directory: staged/cluon-mcp
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

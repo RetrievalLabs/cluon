@@ -38,7 +38,7 @@ The project path defaults to the current directory, and the project must be a gi
 The plugins do not launch the server. `cluon-mcp` serves streamable HTTP for one project, so start it in the project checkout before using the agent:
 
 ```sh
-npx cluon-mcp --project-path /path/to/project
+npx @retrievallabs/cluon-mcp --project-path /path/to/project
 ```
 
 The first run for a project opens the browser to sign in. The MCP endpoint is `http://127.0.0.1:8000/mcp` and the harness UI is `http://127.0.0.1:8001`. If you change `--port`, update the URL in the agent's MCP config.
