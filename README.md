@@ -43,6 +43,8 @@ npx @retrievallabs/cluon-mcp --project-path /path/to/project
 
 The first run for a project opens the browser to sign in. The MCP endpoint is `http://127.0.0.1:8000/mcp` and the harness UI is `http://127.0.0.1:8001`. If you change `--port`, update the URL in the agent's MCP config.
 
+Start the server before the agent session connects to it. A session that starts while the server is down gets a refused connection and does not retry it, so the `cluon` tools stay missing until you reconnect (Claude Code: `/mcp`) once the server reports ready. If reconnecting does not bring them back, start a new session.
+
 ## Install
 
 ### Claude Code

@@ -36,7 +36,7 @@ This blocks until the server accepts MCP connections (up to about 5.5 minutes, t
 
 ## 3. Connect the MCP tools
 
-Tell the user the dashboard is at the `ui` URL. The cluon MCP server was not running when this session started, so its tools may not be connected yet. If `next_stage_unit` is not available, ask the user to reconnect the `cluon` MCP server (Claude Code: `/mcp`; other agents: reload or restart their MCP servers) and wait for them to confirm.
+Tell the user the dashboard is at the `ui` URL. The cluon MCP server was not running when this session started, so its tools may not be connected yet. If `next_stage_unit` is not available, ask the user to reconnect the `cluon` MCP server (Claude Code: `/mcp`; other agents: reload or restart their MCP servers) and wait for them to confirm. A session whose connection was refused at startup does not retry on its own, so if reconnecting does not restore the tools, ask the user to start a new session and run this skill again.
 
 ## 4. Run every stage
 
