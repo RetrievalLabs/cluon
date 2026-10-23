@@ -2,6 +2,6 @@
   "name": "cluon",
   "owner": { "name": "RetrievalLabs" },
   "plugins": [
-    { "name": "cluon", "source": "./", "description": "Java 9 to Java 25 modernization skills and the cluon-mcp harness MCP server" }
+    { "name": "cluon", "source": "./", "description": "Cluon by RetrievalLabs: agentic legacy code modernization. Migrates Java 9 apps to Java 25 with migration skills and the cluon-mcp analysis server, preserving existing behavior." }
   ]
 }

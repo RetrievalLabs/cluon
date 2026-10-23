@@ -1,6 +1,6 @@
 # cluon
 
-Java 9 to Java 25 modernization skills and the `cluon-mcp` harness MCP server, packaged for Claude Code, Codex, Antigravity and Cursor.
+Cluon is an agentic legacy code modernization tool built by RetrievalLabs. This plugin migrates Java 9 applications to Java 25 with migration skills and the `cluon-mcp` analysis server, preserving existing behavior. It is packaged for Claude Code, Codex, Antigravity and Cursor.
 
 The repository root is a single plugin. Every agent reads the same `skills/` directory; each agent has its own manifest and MCP config file:
 
