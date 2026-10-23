@@ -7,7 +7,7 @@ OPT="${CLUON_OPT_ROOT:-/opt}"
 JDKS="$OPT/jdks"
 MAVEN_VERSION=3.9.16
 GRADLE_VERSION=9.7.0
-# Exact JDTLS build the harness is verified against; do not float to the latest, newer builds can change behavior.
+# Pinned to the builds the harness is verified against; newer ones can change behavior.
 JAPICMP_VERSION=0.26.5
 JDTLS_BUILD=1.54.0-202511200503
 JDK_VERSIONS=(8 11 17 21 25)
@@ -50,88 +50,111 @@ install_packages() {
   fi
 }
 
-for tool in git curl tar unzip python3; do
-  if ! command -v "$tool" >/dev/null; then
-    log "installing $tool"
-    install_packages "$tool"
+command -v git >/dev/null || { log "installing git"; install_packages git; }
+
+# Presence checks read version markers from files instead of running the tools, because
+# mvn and gradle need a working JDK on PATH and a missing one must not look like a missing tool.
+jdk_present() { [ -x "$JDKS/jdk$1/bin/java" ]; }
+maven_present() { [ -f "$OPT/maven/lib/maven-core-$MAVEN_VERSION.jar" ]; }
+gradle_present() { [ -f "$OPT/gradle/lib/gradle-launcher-$GRADLE_VERSION.jar" ]; }
+japicmp_present() {
+  [ -f "$OPT/jars/japicmp.jar" ] &&
+    unzip -p "$OPT/jars/japicmp.jar" META-INF/maven/com.github.siom79.japicmp/japicmp/pom.properties 2>/dev/null | grep -qx "version=$JAPICMP_VERSION"
+}
+jdtls_present() { [ -f "$OPT/jdtls/plugins/org.eclipse.jdt.ls.core_${JDTLS_BUILD/-/.}.jar" ]; }
+
+# Decide everything up front so a machine that is already set up makes no download, sudo or package-manager call.
+PRESENT=()
+MISSING=()
+check() { if "${@:2}"; then PRESENT+=("$1"); else MISSING+=("$1"); fi; }
+for version in "${JDK_VERSIONS[@]}"; do check "jdk$version" jdk_present "$version"; done
+check "maven-$MAVEN_VERSION" maven_present
+check "gradle-$GRADLE_VERSION" gradle_present
+check "japicmp-$JAPICMP_VERSION" japicmp_present
+check "jdtls-$JDTLS_BUILD" jdtls_present
+log "present: ${PRESENT[*]:-none}"
+log "to install: ${MISSING[*]:-nothing}"
+
+want() { printf '%s\n' "${MISSING[@]:-}" | grep -qx "$1"; }
+
+if [ "${#MISSING[@]}" -gt 0 ]; then
+  for tool in curl tar unzip python3; do
+    command -v "$tool" >/dev/null || { log "installing $tool"; install_packages "$tool"; }
+  done
+
+  # Create a directory under the install root and hand it to the current user so later steps need no sudo.
+  own_dir() {
+    if ! mkdir -p "$1" 2>/dev/null; then $SUDO mkdir -p "$1"; fi
+    if [ ! -w "$1" ]; then $SUDO chown -R "$(id -un)" "$1"; fi
+  }
+
+  SCRATCH="$(mktemp -d)"
+  trap 'rm -rf "$SCRATCH"' EXIT
+
+  download() { curl -fsSL --retry 3 -o "$2" "$1" || die "download failed: $1"; }
+
+  # Unpack an archive into $2, stripping the single top-level directory.
+  extract_into() {
+    local archive="$1" dest="$2" work
+    work="$(mktemp -d "$SCRATCH/x.XXXXXX")"
+    case "$archive" in
+      *.zip) unzip -q "$archive" -d "$work" ;;
+      *) tar -xzf "$archive" -C "$work" ;;
+    esac
+    rm -rf "$dest"
+    mv "$work"/* "$dest"
+  }
+
+  install_jdk() {
+    local version="$1" dest="$JDKS/jdk$1" home
+    log "installing JDK $version"
+    download "https://api.adoptium.net/v3/binary/latest/$version/ga/$ADOPTIUM_OS/$ADOPTIUM_ARCH/jdk/hotspot/normal/eclipse" "$SCRATCH/jdk$version.tar.gz"
+    extract_into "$SCRATCH/jdk$version.tar.gz" "$SCRATCH/jdk$version"
+    # macOS archives nest the JDK under Contents/Home; the /opt/jdks/jdkN layout must expose bin/ directly.
+    home="$SCRATCH/jdk$version"
+    if [ -d "$home/Contents/Home" ]; then home="$home/Contents/Home"; fi
+    [ -x "$home/bin/java" ] || die "JDK $version archive has no bin/java"
+    own_dir "$JDKS"
+    rm -rf "$dest"
+    mv "$home" "$dest"
+  }
+
+  for version in "${JDK_VERSIONS[@]}"; do
+    if want "jdk$version"; then install_jdk "$version"; fi
+  done
+
+  if want "maven-$MAVEN_VERSION"; then
+    log "installing Maven $MAVEN_VERSION"
+    download "https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz" "$SCRATCH/maven.tar.gz"
+    own_dir "$OPT/maven"
+    extract_into "$SCRATCH/maven.tar.gz" "$OPT/maven"
   fi
-done
 
-# Create a directory under the install root and hand it to the current user so later steps need no sudo.
-own_dir() {
-  if ! mkdir -p "$1" 2>/dev/null; then $SUDO mkdir -p "$1"; fi
-  if [ ! -w "$1" ]; then $SUDO chown -R "$(id -un)" "$1"; fi
-}
+  if want "gradle-$GRADLE_VERSION"; then
+    log "installing Gradle $GRADLE_VERSION"
+    download "https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip" "$SCRATCH/gradle.zip"
+    own_dir "$OPT/gradle"
+    extract_into "$SCRATCH/gradle.zip" "$OPT/gradle"
+  fi
 
-SCRATCH="$(mktemp -d)"
-trap 'rm -rf "$SCRATCH"' EXIT
+  if want "japicmp-$JAPICMP_VERSION"; then
+    log "installing japicmp $JAPICMP_VERSION"
+    own_dir "$OPT/jars"
+    # The jar-with-dependencies build is the one that runs with `java -jar`.
+    download "https://repo1.maven.org/maven2/com/github/siom79/japicmp/japicmp/$JAPICMP_VERSION/japicmp-$JAPICMP_VERSION-jar-with-dependencies.jar" "$OPT/jars/japicmp.jar"
+  fi
 
-download() { curl -fsSL --retry 3 -o "$2" "$1" || die "download failed: $1"; }
-
-# Unpack an archive into $2, stripping the single top-level directory.
-extract_into() {
-  local archive="$1" dest="$2" work
-  work="$(mktemp -d "$SCRATCH/x.XXXXXX")"
-  case "$archive" in
-    *.zip) unzip -q "$archive" -d "$work" ;;
-    *) tar -xzf "$archive" -C "$work" ;;
-  esac
-  rm -rf "$dest"
-  mv "$work"/* "$dest"
-}
-
-install_jdk() {
-  local version="$1" dest="$JDKS/jdk$1" archive home
-  if [ -x "$dest/bin/java" ]; then log "JDK $version already installed"; return; fi
-  log "installing JDK $version"
-  archive="$SCRATCH/jdk$version.tar.gz"
-  download "https://api.adoptium.net/v3/binary/latest/$version/ga/$ADOPTIUM_OS/$ADOPTIUM_ARCH/jdk/hotspot/normal/eclipse" "$archive"
-  extract_into "$archive" "$SCRATCH/jdk$version"
-  # macOS archives nest the JDK under Contents/Home; the /opt/jdks/jdkN layout must expose bin/ directly.
-  home="$SCRATCH/jdk$version"
-  if [ -d "$home/Contents/Home" ]; then home="$home/Contents/Home"; fi
-  [ -x "$home/bin/java" ] || die "JDK $version archive has no bin/java"
-  rm -rf "$dest"
-  mv "$home" "$dest"
-}
-
-own_dir "$JDKS"
-for version in "${JDK_VERSIONS[@]}"; do install_jdk "$version"; done
-
-if [ ! -x "$OPT/maven/bin/mvn" ] || ! "$OPT/maven/bin/mvn" -v 2>/dev/null | grep -q "Apache Maven $MAVEN_VERSION"; then
-  log "installing Maven $MAVEN_VERSION"
-  download "https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz" "$SCRATCH/maven.tar.gz"
-  own_dir "$OPT/maven"
-  extract_into "$SCRATCH/maven.tar.gz" "$OPT/maven"
-else log "Maven $MAVEN_VERSION already installed"; fi
-
-if [ ! -x "$OPT/gradle/bin/gradle" ] || ! "$OPT/gradle/bin/gradle" -v 2>/dev/null | grep -q "Gradle $GRADLE_VERSION"; then
-  log "installing Gradle $GRADLE_VERSION"
-  download "https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip" "$SCRATCH/gradle.zip"
-  own_dir "$OPT/gradle"
-  extract_into "$SCRATCH/gradle.zip" "$OPT/gradle"
-else log "Gradle $GRADLE_VERSION already installed"; fi
-
-japicmp_installed() {
-  unzip -p "$OPT/jars/japicmp.jar" META-INF/maven/com.github.siom79.japicmp/japicmp/pom.properties 2>/dev/null | grep -qx "version=$JAPICMP_VERSION"
-}
-if ! japicmp_installed; then
-  log "installing japicmp $JAPICMP_VERSION"
-  own_dir "$OPT/jars"
-  # The jar-with-dependencies build is the one that runs with `java -jar`.
-  download "https://repo1.maven.org/maven2/com/github/siom79/japicmp/japicmp/$JAPICMP_VERSION/japicmp-$JAPICMP_VERSION-jar-with-dependencies.jar" "$OPT/jars/japicmp.jar"
-else log "japicmp $JAPICMP_VERSION already installed"; fi
-
-if ! ls "$OPT/jdtls/plugins" 2>/dev/null | grep -q "^org.eclipse.jdt.ls.core_${JDTLS_BUILD/-/.}.jar$"; then
-  log "installing JDTLS $JDTLS_BUILD"
-  download "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-$JDTLS_BUILD.tar.gz" "$SCRATCH/jdtls.tar.gz"
-  own_dir "$OPT/jdtls"
-  # JDTLS tarballs have no top-level directory, so unpack in place.
-  rm -rf "${OPT:?}/jdtls"/*
-  tar -xzf "$SCRATCH/jdtls.tar.gz" -C "$OPT/jdtls"
-  [ -e "$OPT/jdtls/bin/jdtls" ] || die "JDTLS archive has no bin/jdtls"
-  chmod +x "$OPT/jdtls/bin/jdtls"
-else log "JDTLS $JDTLS_BUILD already installed"; fi
+  if want "jdtls-$JDTLS_BUILD"; then
+    log "installing JDTLS $JDTLS_BUILD"
+    download "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-$JDTLS_BUILD.tar.gz" "$SCRATCH/jdtls.tar.gz"
+    own_dir "$OPT/jdtls"
+    # JDTLS tarballs have no top-level directory, so unpack in place.
+    rm -rf "${OPT:?}/jdtls"/*
+    tar -xzf "$SCRATCH/jdtls.tar.gz" -C "$OPT/jdtls"
+    [ -e "$OPT/jdtls/bin/jdtls" ] || die "JDTLS archive has no bin/jdtls"
+    chmod +x "$OPT/jdtls/bin/jdtls"
+  fi
+fi
 
 # JDK 25 is the default JAVA_HOME. JDTLS gets its own variable so it keeps running on JDK 25
 # even when a migration switches JAVA_HOME to the project's JDK.

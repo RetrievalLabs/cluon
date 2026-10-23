@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Setup
 
-Run this once per machine, not per project: everything it installs is shared by all projects. Run the bundled script. It supports Linux and macOS on x64 and arm64. Once a run completes it records that, and later runs print "already set up" and exit; pass `--force` only when the user asks to repair or update the environment.
+Run this once per machine, not per project: everything it installs is shared by all projects. Run the bundled script. It supports Linux and macOS on x64 and arm64. Once a run completes it records that, and later runs print "already set up" and exit; pass `--force` only when the user asks to repair or update the environment. Components already present at the pinned version are never downloaded, with or without `--force`; the script prints which are present and which it will install, and does nothing else when all are present.
 
 ```sh
 bash <this skill's directory>/scripts/setup.sh [--force]
