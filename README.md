@@ -1,6 +1,6 @@
 # cluon
 
-Java 9 to Java 25 modernization skills and the `cluon-mcp` harness MCP server, packaged for Claude Code, Codex, Antigravity, Cursor and Windsurf.
+Java 9 to Java 25 modernization skills and the `cluon-mcp` harness MCP server, packaged for Claude Code, Codex, Antigravity and Cursor.
 
 The repository root is a single plugin. Every agent reads the same `skills/` directory; each agent has its own manifest and MCP config file:
 
@@ -10,7 +10,6 @@ The repository root is a single plugin. Every agent reads the same `skills/` dir
 | Codex | `plugin.json`, `.agents/plugins/marketplace.json` | `mcp.json` |
 | Cursor | `.cursor-plugin/plugin.json`, `.cursor-plugin/marketplace.json` | `mcp.json` |
 | Antigravity | `plugin.json` | `mcp_config.json` |
-| Windsurf | none (manual setup) | `windsurf/mcp_config.json` |
 
 Skills are copied from `gluon/app/harness/skills`.
 
@@ -51,10 +50,3 @@ For the app or IDE, clone this repository into `~/.gemini/config/plugins/cluon` 
 ### Cursor
 
 Add `https://github.com/RetrievalLabs/cluon` as a marketplace (Dashboard, Plugins & MCPs, Add Marketplace) and install `cluon`. To test locally, clone or link this repository to `~/.cursor/plugins/local/cluon`.
-
-### Windsurf
-
-Windsurf has no plugin system.
-
-1. Copy the folders in `skills/` into the project's `.windsurf/skills/` (or `~/.codeium/windsurf/skills/` for all projects).
-2. Merge the `cluon` entry from `windsurf/mcp_config.json` into `~/.codeium/windsurf/mcp_config.json`.
