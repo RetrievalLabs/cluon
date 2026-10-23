@@ -26,6 +26,14 @@ jobs:
             echo "Expected stable semantic version tag (vMAJOR.MINOR.PATCH) in GLUON_VERSION, got: $tag" >&2
             exit 1
           fi
+          # The plugin manifests carry the same version as the gluon tag.
+          for f in plugin.json .claude-plugin/plugin.json .cursor-plugin/plugin.json; do
+            v="$(jq -r .version "$f")"
+            if [[ "$v" != "${tag#v}" ]]; then
+              echo "$f version is $v, expected ${tag#v} to match GLUON_VERSION" >&2
+              exit 1
+            fi
+          done
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
@@ -170,3 +178,22 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public
+
+  # Tags cluon main with the gluon tag once the release is published.
+  tag:
+    needs: [verify, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag main
+        run: |
+          tag="${{ needs.verify.outputs.tag }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag already exists, skipping"
+            exit 0
+          fi
+          git tag "$tag"
+          git push origin "$tag"
