@@ -1,0 +1,7 @@
+{
+  "name": "cluon",
+  "owner": { "name": "RetrievalLabs" },
+  "plugins": [
+    { "name": "cluon", "source": "./", "description": "Java 9 to Java 25 modernization skills and the cluon-mcp harness MCP server" }
+  ]
+}
