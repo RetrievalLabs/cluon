@@ -23,6 +23,16 @@ Run the `setup` skill once per machine, not per project. In Claude Code:
 
 It installs git, JDK 8, 11, 17, 21 and 25 under `/opt/jdks/jdkN`, Maven 3.9.16, Gradle 9.7.0, japicmp 0.26.5 at `/opt/jars/japicmp.jar` and Eclipse JDTLS 1.54.0 (`jdtls` on `PATH`). It sets `JAVA_HOME` and `GLUON_JDTLS_JAVA_HOME` to JDK 25 through `~/.cluon/env.sh`, which it sources from `~/.bashrc`, `~/.zshrc` and `~/.profile`. Linux and macOS are supported. Creating `/opt` directories needs `sudo`; if it needs a password, run `skills/setup/scripts/setup.sh` yourself in a terminal. Later runs do nothing unless you pass `--force`. Open a new shell afterwards.
 
+## Analyze a project
+
+After setup, analyze a legacy Java project against a target Java version:
+
+```
+/cluon:analyze 25 /path/to/project
+```
+
+The project path defaults to the current directory, and the project must be a git checkout. The skill starts `cluon-mcp` for the project (this replaces the manual `npx` step below), so the agent has to reconnect the `cluon` MCP server once (Claude Code: `/mcp`). The first run for a project opens the browser to sign in to the cluon platform; if no window opens, the agent shows the sign-in link to open on the same machine. The harness dashboard is served at `http://127.0.0.1:8001`. The agent then runs every analysis stage through the harness tools, following `next_stage_unit` until it reports `complete`, and leaves the server running. The target version applies when the server starts; stop a running server and run the command again to change it.
+
 ## Start the MCP server
 
 The plugins do not launch the server. `cluon-mcp` serves streamable HTTP for one project, so start it in the project checkout before using the agent:
