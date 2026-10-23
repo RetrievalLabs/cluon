@@ -42,8 +42,8 @@ Tell the user the dashboard is at the `ui` URL. The cluon MCP server was not run
 
 Repeat until done:
 
-1. Call `next_stage_unit`.
-2. `status: pending`: call the tool named in `item.tool`, passing `item.unit_id` when present, and follow the instructions the tool returns. For architecture units, give the returned prompt to a fresh subagent, then call `complete_architecture_report_unit` with its summary and labels, as the tool says.
+1. Call `next_stage_unit`. It only reports the next stage or unit; it does not run it.
+2. `status: pending`: this is only the name of the work to do. Run it by calling the tool named in `item.tool` (for example `run_parse_build`), passing `item.unit_id` when present, and follow the instructions the tool returns. For architecture units, give the returned prompt to a fresh subagent, then call `complete_architecture_report_unit` with its summary and labels, as the tool says.
 3. `status: in_progress`: something is already running. Call `status`, then call `next_stage_unit` again. If `status` shows no change after several checks, report that the stage looks stuck and stop.
 4. `status: complete`: all stages are done.
 

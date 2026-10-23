@@ -31,7 +31,7 @@ After setup, analyze a legacy Java project against a target Java version:
 /cluon:analyze 25 /path/to/project
 ```
 
-The project path defaults to the current directory, and the project must be a git checkout. The skill starts `cluon-mcp` for the project (this replaces the manual `npx` step below), so the agent has to reconnect the `cluon` MCP server once (Claude Code: `/mcp`). The first run for a project opens the browser to sign in to the cluon platform; if no window opens, the agent shows the sign-in link to open on the same machine. The harness dashboard is served at `http://127.0.0.1:8001`. The agent then runs every analysis stage through the harness tools, following `next_stage_unit` until it reports `complete`, and leaves the server running. The target version applies when the server starts; stop a running server and run the command again to change it.
+The project path defaults to the current directory, and the project must be a git checkout. The skill starts `cluon-mcp` for the project (this replaces the manual `npx` step below), so the agent has to reconnect the `cluon` MCP server once (Claude Code: `/mcp`). The first run for a project opens the browser to sign in to the cluon platform; if no window opens, the agent shows the sign-in link to open on the same machine. The harness dashboard is served at `http://127.0.0.1:8001`. The agent then runs every analysis stage through the harness tools: `next_stage_unit` only names the next stage, so the agent calls the tool it names to run it, repeating until `next_stage_unit` reports `complete`, and leaves the server running. The target version applies when the server starts; stop a running server and run the command again to change it.
 
 ## Start the MCP server
 
