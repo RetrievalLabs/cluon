@@ -1,5 +1,5 @@
 {
   "name": "cluon",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Cluon by RetrievalLabs: agentic legacy code modernization. Migrates Java 9 apps to Java 25 with migration skills and the cluon-mcp analysis server, preserving existing behavior."
 }
